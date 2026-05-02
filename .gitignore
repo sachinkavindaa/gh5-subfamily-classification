@@ -1,0 +1,26 @@
+# large data files
+*.fasta
+*.fa
+*.faa
+*.fna
+*.fastq
+*.fq
+*.gz
+*.zip
+
+# HCC / SLURM outputs
+*.out
+*.err
+slurm-*.out
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+
+# temporary files
+tmp/
+temp/

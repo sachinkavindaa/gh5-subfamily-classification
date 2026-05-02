@@ -1,0 +1,117 @@
+## Part 0: Create Project Folders and Clone Git Repository
+cd /work/fdst396/your_name
+mkdir course_project
+cd course_project
+git clone https://https://github.com/numanislam/course-project-1-Subfamily-classification-of-glycoside-hydrolase-family
+
+# for each part, create a folder and named with “part1”,  “part2”, “part3”....
+mkdir part1
+________________________________________________________________________________
+##Part 1: Data preparation
+## Copy the link and use the wget to download it on swan
+## Use GH31.txt to get a list of genbank ids of GH31 family
+## Remove the redundant IDs
+## Get unique ids in GH31
+
+cd part1
+wget http://www.cazy.org/IMG/cazy_data/GH31.txt   
+less GH31.txt | grep -w ncbi | cut -f 4 > list_ids.txt 
+
+
+cat list_ids.txt | sort | uniq > uniq_list_ids.txt 
+wc -l uniq_list_ids.txt  # unique ids in GH31
+
+## install the EDirect software, more information https://www.ncbi.nlm.nih.gov/books/NBK179288/
+sh -c "$(curl -fsSL https://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/install-edirect.sh)" 
+
+export PATH=${HOME}/edirect:${PATH}
+
+# Answer "y" and press the Return key
+
+export NCBI_API_KEY=your_API_KEY
+#EX: export NCBI_API_KEY=81e5ba4b75d9218a02c7502bb754ba229208
+## copy batch_download_protein_seqeunces.sh and run it (running time is about 30 min)
+
+cp ../course-project-1-Subfamily-classification-of-glycoside-hydrolase-family/batch_download_protein_seqeunces.sh .
+nano batch_download_protein_seqeunces.sh
+# Revise to change email address in batch_download_protein_seqeunces.sh
+
+bash batch_download_protein_seqeunces.sh
+
+________________________________________________________________________________
+##Part 2: Domain annotation
+#Create your part2 folder
+## download annotation tools
+##Go to the website: https://bcb.unl.edu/dbCAN2/download/Databases/dbCAN-old@UGA/ download “dbCAN-fam-HMMs.txt” and “hmmscan-parser.sh”
+
+mkdir part2
+cd part2
+wget https://bcb.unl.edu/dbCAN2/download/Databases/dbCAN-old@UGA/dbCAN-fam-HMMs.txt
+wget https://bcb.unl.edu/dbCAN2/download/Databases/dbCAN-old@UGA/hmmscan-parser.sh
+
+##Use module load to activate hmmer on swan.
+
+ml hmmer/3.3
+hmmbuild -h  #To check if it works or not.
+
+hmmpress dbCAN-fam-HMMs.txt
+
+cp ../course-project-1-Subfamily-classification-of-glycoside-hydrolase-family/hmmscan_run.slurm .
+nano hmmscan_run.slurm
+
+#Edit it using your info.
+#Try smaller mem if the waiting time is too long.
+#Set error and output with the same path (in your part2 folder).
+#Add email to remind you when it start/stop.
+#Remember where you have your GH31 protein sequence files.
+
+#!/bin/bash
+#SBATCH --time=24:00:00          # Run time in hh:mm:ss
+#SBATCH --mem=100gb       # Maximum memory required per CPU (in megabytes)
+#SBATCH --job-name=hmmscan
+#SBATCH --error=/work/yinlab/mislam17/course_project/part2/hmmscan.%J.err
+#SBATCH --output=/work/yinlab/mislam17/course_project/part2/hmmscan.%J.out
+#SBATCH --partition=batch,guest
+#SBATCH --mail-user=mislam17@huskers.unl.edu
+#SBATCH --mail-type=ALL
+
+ml hmmer/3.3
+hmmscan --domtblout gh31_hmmscan.out.dm dbCAN-fam-HMMs.txt /work/yinlab/mislam17/course-project-1-Subfamily-classification-of-glycoside-hydrolase-family/part1/batch_protein_sequences.fasta > gh31_hmmscan.out
+
+##Run hmmscan_run.slurm using sbatch (it takes around 4 hours)
+sbatch hmmscan_run.slurm
+
+##Run the following commands to make the result readable 
+##Extract the final modules by filtering with E- Value <1e-15 and coverage cut off >0.35.
+
+sh hmmscan-parser.sh gh31_hmmscan.out.dm > gh31_hmmscan.out.dm.ps 
+
+cat gh31_hmmscan.out.dm.ps  | awk '$5<1e-15&&$10>0.35' > gh31_hmmscan.out.dm.ps.stringent
+
+________________________________________________________________________________
+##Part 3: Domain extraction
+#Create your part3 folder
+mkdir part3
+cd part3
+ml biopython/py311/1.81
+cp ../course-project-1-Subfamily-classification-of-glycoside-hydrolase-family/filter_modules_20sep2025.py .
+cp ../part1/batch_protein_sequences.fasta .
+cp ../part2/gh31_hmmscan.out.dm.ps.stringent .
+nano filter_modules_20sep2025.py
+##change the batch_protein_sequences.fasta and the family name in filter_modules_20sep2025.py
+python filter_modules_20sep2025.py > extracted_domains.faa
+
+ml seqkit
+seqkit sample -p 0.2 extracted_domains.faa  -o random_selected_extracted_domains_02.faa
+
+
+________________________________________________________________________________
+##Part 4: Sequence similarity networks (SSNpipe) 
+mkdir part4
+##Part 5: Cytoscape Visualization
+mkdir part5
+##check on the slides
+
+________________________________________________________________________________
+
+
